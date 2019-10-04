@@ -20,28 +20,41 @@ import qualified System.IO as SIO
 import RIO
 import RIO.Time (getCurrentTime)
 
-------------------------------------------------------------------------------------------------------------------
-sayLastName :: RIO App ()
-sayLastName = do
-  switchHandle stdout sayHello
-  app <- ask
-  runRIO app $ addLastName "Weiss" sayBye
+{-
+The ADT passed into RIO app.
+Used same as a Reader monad, which is what RIO is: ReaderT IO
+Notes:
+Everything is strict.
+Uses a LogFunc, which is recommended way of logging.
+-}
+data App = App
+  {appName :: !String,
+   appHandle :: !Handle,
+   appLogFunc :: !LogFunc
+  }
+
+--------------------------------------------------LogFunc----------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+{-
+search: Alright, enough playing around. How do we actually create a log function?!? We go through a two-stage process:
 
 
-sayLastNameWithLog :: RIO App a -> IO a
-sayLastNameWithLog inner = do
-  logOptions' <- logOptionsHandle stdout False
-  let logOptions = setLogUseTime True $ setLogUseLoc True logOptions'
-  withLogFunc logOptions $ \logFunc -> do
-    let app = App "Justin" stderr logFunc
-    runRIO app inner
+---------------------------------How to run RIO using LogOptions:--------------------------------
+Purpose of LogOption:
+Setting up logging, including debug logs.
+Run a RIO app using LogOption
 
-runSayLastNameWithLog :: IO ()
-runSayLastNameWithLog =
-  sayLastNameWithLog sayLastName
-  
-  
-  
+1:create the runApp fx. A new one has to be created for every variation of LogFunc and App env that will be run.
+2 Call a RIO APP () using the runApp fx.
+-}
+
+{-
+Create/setup the LogFunc system.
+Create the App env.
+Run whatever RIO App is passed in.
+-}  
 runApp :: RIO App a -> IO a
 runApp inner = do
   logOptions' <- logOptionsHandle stdout False
@@ -50,34 +63,59 @@ runApp inner = do
     let app = App "Heath" stderr logFunc
     runRIO app inner
 
-sayHelloWithLog :: IO ()
-sayHelloWithLog = runApp sayEveryThing -- sayHello
+--Use runApp 
+runSayThingsWitLog :: IO ()
+runSayThingsWitLog = runApp sayEveryThingWithLog -- sayHello
 
-sayEveryThing :: RIO App ()
-sayEveryThing = do
+sayEveryThingWithLog :: RIO App ()
+sayEveryThingWithLog = do
   sayHello
   sayBye
+  --alternatively add the last name.
+  app <- ask
+  runRIO app $ addLastName "Weiss" sayBye
 
-data App = App
-  {appName :: !String,
-   appHandle :: !Handle,
-   appLogFunc :: !LogFunc
-  }
+  
+----------------------------------------------------end: logFunc---------------------------------------------------------------------------
 
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------- setting up HasHandle tpeclass - ------------------------------------------------------------
+
+{-
+The App field (appHandle :: !Handle) is used as and example of setting up a reusable field.
+The (<appHandle/or other name> :: !Handle) could be put into any ADT, and used by implementing this typeclass system.
+
+Steps involved are:
+Set up the HasHandle typeclass.
+Make the target ADT and instance of the HasHandle typeclass.
+-}
+
+--declare the typeclass.
 class HasHandle env where
   handleL :: Lens' env Handle
 
+--Make Handle and instance of HasHandle. Not sure why this has to be done.
+--In the case of HasName typeclass, no such thing has to be done.
 instance HasHandle Handle where
   handleL = id
 
+--Make App and instance of HasHandle.
 instance HasHandle App where
   handleL = lens appHandle (\x y -> x {appHandle = y})
 
+--another example useing a String. Note that didn't have to make string an instance the way Handle had to be declared.
 class HasName env where
   nameL :: Lens' env String
 
 instance HasName App where
   nameL = lens appName (\x y -> x {appName = y})
+
+---------------------------------------------- end: setting up HasHandle tpeclass - --------------------------------------------------------
+
+
 
 say :: HasHandle env =>  String -> RIO env ()
 say msg = do
@@ -109,9 +147,4 @@ switchHandle h = do
 addLastName :: HasName env => String -> RIO env a -> RIO env a
 addLastName lastName = local $ over nameL (++ " " ++ lastName)
 
-runLogInfo :: IO ()
-runLogInfo = runSimpleApp $ do
-  logDebug "Debug"
-  logInfo "Info"
-  logWarn "Warn"
-  logError "Error"
+
