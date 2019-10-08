@@ -6,7 +6,7 @@ Try out exceptions using RIO system.
 Ref: https://tech.fpcomplete.com/haskell/tutorial/exceptions
 -}
 
-module Exceptions(test1, test2, test3, test4, ) where
+module Exceptions(MyException(..), test1, test2, test3, test4, ) where
 
 import RIO
 
@@ -18,9 +18,11 @@ runTests = do
   runTestTT test3
   runTestTT test4
   --runTestTT test5
- 
+
+  
 data MyException = MyException
-                 | MyStrException Utf8Builder
+                 | MyStrException {utf8Builder :: Utf8Builder -- ^ The error message as a Utf8Builder
+                                  } 
   deriving (Typeable)
 
 instance Show MyException where
