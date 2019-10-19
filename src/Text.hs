@@ -12,7 +12,7 @@ Should I work in RIO.ByteString, as it seems to have all the functionality of Te
 mentioned here: https://www.snoyman.com/blog/2016/12/beware-of-readfile
 -}
 
-module Text(test1, test1ToStdout, test1WrittenToFile, test2, writeUtf8ToFile, writeUtf8ToFileFromRIO, writeTextToFileFromRIO) where
+module Text {-(test1, test1ToStdout, test1WrittenToFile, test2, writeUtf8ToFile, writeUtf8ToFileFromRIO, writeTextToFileFromRIO)-} where
 
 import RIO
 import qualified RIO.Text as RIO.Text
@@ -30,11 +30,19 @@ runTests = do
   runTestTT test1
   runTestTT test2
 
+
+
 -- | Create a Text without any alterations.
 test1 = TestCase $ assertEqual
   "test1"
   ("some text")
   ("some text")
+
+-- * Use Text with IO
+--
+-- $useIO
+--
+-- Output Text in IO using various IO functions such as putStrLn and hPutStr
 
 -- | Ouput a Text to stdout.
 --  Does so without any surrounding quotes.
@@ -48,40 +56,28 @@ test1ToStdout =
 test1WrittenToFile = do
   --h <- GHC.IO.Handle.mkFileHandle "src/Data/TextModuleTest.txt" System.IO.WriteMode Nothing GHC.IO.Handle.noNewlineTranslation
   h <- System.IO.openFile filePathToTestFile System.IO.WriteMode
-  Data.Text.IO.hPutStr h "some textttt"
+  Data.Text.IO.hPutStr h "some text"
 
--- | Append 2 Text as a monoid.
+-- | Write Text to a file, from inside the RIO monad using Data.Text.IO.writeFile.
+-- The write has to be lifted from IO to RIO, and can use Text directly.
+-- But is it better to stick with Utf8 instead of Text as per: https://www.snoyman.com/blog/2016/12/beware-of-readfile?
+-- Utf8 seems to have all the same functions as the Text module.
+writeTextToFileFromRIO :: IO ()
+writeTextToFileFromRIO =
+  runSimpleApp $ liftIO $ Data.Text.IO.writeFile filePathToTestFile "writeTextToFileFromRIO"
+
+-- * Use Text as an instance of Monoid
+--
+-- $useAsMonoid
+--
+-- Manipulate Text as a Monoid.
+
+
+-- | Append Text as a monoid.
 test2 = TestCase $ assertEqual
   "test2"
   ("some text")
   ("some " <> "text")
 
 
--- | Use writeFileUtf8 to write text. Note that it isn't wrapped in double quotes.
---  It automatically encodes the Text to Utf8. If had used RIO.File.writeBinary file,
---  would need to use encodeUtf8, to manually encode the Text to Utf8.
-writeUtf8ToFile :: IO ()
-writeUtf8ToFile = do
-  writeFileUtf8 filePathToTestFile "writeUtf8ToFile2"
-
-
---next
---use RIO.File.writeBinaryFile to write the file from the RIO monad.
---This will automatically lift it into RIO monad.
---Do this here and in the RIO test module.
-
--- | Write Text to a file, from inside the RIO monad using RIO.File.writeBinaryFile.
--- This automatically lifts writeBinaryFile from IO to RIO, however it uses ByteString, so must be converted from Text.
--- What is the overhead of converting. Is it better to stay with Utf8 to avoid Text problems mentiond in :
--- https://www.snoyman.com/blog/2016/12/beware-of-readfile
-writeUtf8ToFileFromRIO :: IO ()
-writeUtf8ToFileFromRIO =
-  runSimpleApp $ RIO.File.writeBinaryFile filePathToTestFile $ Data.Text.Encoding.encodeUtf8 "writeUtf8ToFileFromRIO"
-
--- | Write Text to a file, from inside the RIO monad using Data.Text.IO.writeFile.
--- The write has to be lifted from IO to RIO, and can use Text directly.
--- But is it better to stick with Utf8 instead of Text as per: https://www.snoyman.com/blog/2016/12/beware-of-readfile
-writeTextToFileFromRIO :: IO ()
-writeTextToFileFromRIO =
-  runSimpleApp $ liftIO $ Data.Text.IO.writeFile filePathToTestFile "writeTextToFileFromRIO"
 
