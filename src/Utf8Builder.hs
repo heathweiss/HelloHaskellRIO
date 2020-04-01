@@ -7,53 +7,65 @@ It gets used by the RIO logging system, such as logInfo, but other than that, no
 The problem is that it wraps everything in double quotes, including writing to file.
 Instead use Text for things like building up error messages, and writing gmsh script files, etc.
 -}
-module Utf8Builder(test1, test2, test3, showLogWarning, showLogWarningWithMonoid, writeUtf8BuilderToFile, writeByteStringToFile) where
+module Utf8Builder() where
 
 import RIO
---import qualified Prelude as P
+import qualified Prelude as P
 import Test.HUnit 
 import qualified RIO.Text as T
 import qualified RIO.File as RIO.File
-import qualified GHC.IO.Handle as H
+import qualified System.IO as SIO
 import qualified RIO.ByteString as B
 
+--All Utf8Builder filewriting will write to this same file, which may cause unexpected results.
 filePathToTestFile = "src/Data/Utf8BuilderModuleTests.txt"
 
-runTests = do
-  runTestTT test1
-  runTestTT test2
-  runTestTT test3
-  runTestTT test4
-  
-
+runDisplayTests = do
+---------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------- displaying Utf8Builder ---------------------------------------------------------------------------------------  
 -- | Create a Utf8Builder from Text, and change it back to Text because Utf8Builder is not an instance of Eq, and so will not work with assertEqual.
 --  Utf8Builder, via displayShow, add double quotes to the Text, which can only be removed by extracting the text from the UtfBuilder and
 --  manually removing them.
-test1 = TestCase $ assertEqual
-  "test1"
-  ("\"text?\"")
-  (utf8BuilderToText  $ displayShow "text?")
---Utf8Builder -> Text   show a => a -> Utf8Builder
+ let 
+  test1 = TestCase $ assertEqual
+   "test1"
+   ("\"text?\"")
+   (utf8BuilderToText  $ displayShow "text?")
+ runTestTT test1
+ --do same, but use textDisplay, which Utf8Builder gets from being an instance of Display
+ --Gives the exact same result.
+ let
+  test1a = TestCase $ assertEqual
+   "test1"
+   ("\"text?\"")
+   (textDisplay  $  displayShow "text?")
+ runTestTT test1a
 
 -- | Same as test1, but use lazy Text.
 --  RIO does not recommend the use of lazy Text except when using lazy IO.
-test2 = TestCase $ assertEqual
-  "test2"
-  ("\"text?\"")
-  (utf8BuilderToLazyText $ displayShow "text?")
+ let
+  test2 = TestCase $ assertEqual
+   "test2"
+   ("\"text?\"")
+   (utf8BuilderToLazyText $ displayShow "text?")
+ runTestTT test2
 
--- | Create 3 Utf8Builders from Text and add them together as a Monoid.
---  Notice that each Text is surrounded by double quotes.
-test3 = TestCase $ assertEqual
-  "test"
-  ("\"aaaaa\"\"bbbbb\"\"ccccc\"")
-  (let
-     a = displayShow $ "aaaaa"
-     b = displayShow "bbbbb"
-     c = displayShow "ccccc"
-   in
-   utf8BuilderToText $ a <> b <> c 
-  )
+ -- | Create 3 Utf8Builders from Text and add them together as a Monoid.
+ --  Notice that each Text is surrounded by double quotes.
+ let
+  test3 = TestCase $ assertEqual
+   "test"
+   ("\"aaaaa\"\"bbbbb\"\"ccccc\"")
+   (let
+      a = displayShow $ "aaaaa"
+      b = displayShow "bbbbb"
+      c = displayShow "ccccc"
+    in
+    utf8BuilderToText $ a <> b <> c 
+   )
+ runTestTT test3
+
 
 -- | LogWaring outputs Text with quotes.
 showLogWarning :: IO ()
@@ -99,20 +111,54 @@ test4 = TestCase $ assertEqual
   )
 
 
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------- writing to file -------------------------------------------------------------------
+
 -- | Shows that writeFileUtf8Builder will write text that is wrapped in double quotes, which were added by displayShow when it created a Utf8Builder.
+-- It does overwrite whatever was in the file.
 writeUtf8BuilderToFile :: IO ()
 writeUtf8BuilderToFile =
   writeFileUtf8Builder filePathToTestFile $ displayShow  "ccccc"
 
 
+
 -- | Show that writing Text using  RIO.File.writeBinaryFile does not add the double quotes, the way displayShow did in previous test function.
+-- It does overwrite whatever was in the file.
 writeByteStringToFile :: IO ()
 writeByteStringToFile = do
   --RIO.File.writeBinaryFile filePathToTestFile $ encodeUtf8 "ccccc"
   --encodeUtf8 is used to convert the Text to Utf8.
-
   --but a simpler way to do this is with writeFileUtf8 which does the encoding automatically.
   writeFileUtf8 filePathToTestFile "ccccc"
-  
+
+-- | Create a ByteString from pieces, then write it to file using RIO.ByteString.hPut. 
+-- Writes to file without the formatting problems of Utf8Builder.
+writeByteStringToFileWithHandle :: IO ()
+writeByteStringToFileWithHandle = do
+  h <-  SIO.openFile  filePathToTestFile SIO.WriteMode
+  let abc = encodeUtf8 "abc"
+  --B.hPut h $  "abc" <> "def"
+  B.hPut h $  abc <> "def" <>  "ghi"
+  B.hPut h "jkl"
+  SIO.hClose h
 
 
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------- building up a Builder with UTF8Builder ----------------------------------------------
+{-
+Utf8Builder is in the RIO prelude: https://hackage.haskell.org/package/rio-0.1.14.1/docs/RIO.html#t:Utf8Builder
+
+
+Builder is in RIO.Prelude.Types: https://hackage.haskell.org/package/rio-0.1.14.1/docs/RIO-Prelude-Types.html#t:Builder
+-}
