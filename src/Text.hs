@@ -15,11 +15,12 @@ mentioned here: https://www.snoyman.com/blog/2016/12/beware-of-readfile
 module Text {-(test1, test1ToStdout, test1WrittenToFile, test2, writeUtf8ToFile, writeUtf8ToFileFromRIO, writeTextToFileFromRIO)-} where
 
 import RIO
-import qualified RIO.Text as RIO.Text
-import qualified Data.Text.IO as Data.Text.IO
+import qualified RIO.Text as T
+--import qualified Data.Text.IO as Data.Text.IO
+import qualified Prelude as P
 import qualified GHC.IO.Handle as GHC.IO.Handle
 import qualified System.IO as System.IO
-import qualified Data.Text.Encoding as Data.Text.Encoding
+--import qualified Data.Text.Encoding as Data.Text.Encoding
 import qualified RIO.File as RIO.File
 
 import Test.HUnit
@@ -47,25 +48,27 @@ test1 = TestCase $ assertEqual
 -- | Ouput a Text to stdout.
 --  Does so without any surrounding quotes.
 test1ToStdout =
-  Data.Text.IO.putStrLn "some text"
+  P.putStrLn "some text"
 
 -- | Writes the Text to a file. No surrounding quotes.
 --  Overwrites any pre-exising file.
 --  Creates a new file if not already exists.
 --  Throws an IOException if the Directory does not exist.
+{-
+Need to write these using RIO system to write text to a file.
 test1WrittenToFile = do
   --h <- GHC.IO.Handle.mkFileHandle "src/Data/TextModuleTest.txt" System.IO.WriteMode Nothing GHC.IO.Handle.noNewlineTranslation
   h <- System.IO.openFile filePathToTestFile System.IO.WriteMode
-  Data.Text.IO.hPutStr h "some text"
+  hPutStr h "some text"
 
--- | Write Text to a file, from inside the RIO monad using Data.Text.IO.writeFile.
+-- | Write Text to a file, from inside the RIO monad using T.writeFile.
 -- The write has to be lifted from IO to RIO, and can use Text directly.
 -- But is it better to stick with Utf8 instead of Text as per: https://www.snoyman.com/blog/2016/12/beware-of-readfile?
 -- Utf8 seems to have all the same functions as the Text module.
 writeTextToFileFromRIO :: IO ()
 writeTextToFileFromRIO =
-  runSimpleApp $ liftIO $ Data.Text.IO.writeFile filePathToTestFile "writeTextToFileFromRIO"
-
+  runSimpleApp $ liftIO $ writeFile filePathToTestFile "writeTextToFileFromRIO"
+-}
 -- * Use Text as an instance of Monoid
 --
 -- $useAsMonoid
